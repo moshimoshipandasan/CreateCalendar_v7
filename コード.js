@@ -1,6 +1,6 @@
 /*
  * 年間行事予定カレンダー連携ツール (CreateCalendar)
- * 説明書:https://github.com/moshimoshipandasan/CreateCalendar_v6/blob/main/README.md
+ * 説明書:https://github.com/moshimoshipandasan/CreateCalendar_v7/blob/main/README.md
  * このツールは、スプレッドシートで管理している年間行事予定をGoogleカレンダーに自動的に書き込むための
  * Google Apps Scriptプロジェクトです。スプレッドシートを原本として、カレンダーを常に最新の状態に保ちます。
  * 
@@ -10,6 +10,12 @@
  * - 祝日データの行事予定への追加・削除
  * - 特定の曜日に毎週同じ予定を一括追加・削除
  * - 時間指定のある予定と終日予定の両方に対応
+ * - 前期（4-9月）と後期（10-3月）に分けた書き込み機能
+ * 
+ * 予定の入力方法:
+ * - 時間指定のある予定: 予定名<開始時刻-終了時刻> 例）会議<10:00-12:00>
+ * - 複数の予定を同じ日に入力: カンマ区切りで入力 例）授業参観,職員会議
+ * - 混在も可能: 例）遠足<9:00-15:00>,職員研修
  * 
  * Author: noboru ando
  * 
@@ -21,6 +27,7 @@
  * - ver5 (2021/09/05): 全角ハイフン「ー」対応
  * - ver5.1 (2022/02/02): 全角ハイフン「−」対応
  * - ver6 (2025/03/22): カレンダー同期機能強化（既存予定の削除と再同期）
+ * - ver7 (2025/03/25): 前期・後期分割書き込み機能追加
  * 
  * ライセンス:
  * MIT License
@@ -409,7 +416,7 @@ function onOpen() {
   menu.addItem('【祝日削除】祝日を行事予定から削除', 'removeHolidaysFromSchedule');
   menu.addItem('【毎週追加】毎週の予定を追加', 'addWeeklySchedule');
   menu.addItem('【毎週削除】毎週の予定を削除', 'removeWeeklySchedule');
-  menu.addItem('【登録】全期間カレンダーへ書き込み実行', 'writeScheduleToCalendar');
+  menu.addItem('【全期間登録】全期間カレンダーへ書き込み実行', 'writeScheduleToCalendar');
   menu.addItem('【前期登録】前期（4-9月）書き込み実行', 'writeScheduleToCalendar49');
   menu.addItem('【後期登録】後期（10-3月）書き込み実行', 'writeScheduleToCalendar103');
   menu.addToUi();
