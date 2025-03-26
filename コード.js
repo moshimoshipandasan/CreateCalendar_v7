@@ -11,6 +11,7 @@
  * - 特定の曜日に毎週同じ予定を一括追加・削除
  * - 時間指定のある予定と終日予定の両方に対応
  * - 前期（4-9月）と後期（10-3月）に分けた書き込み機能
+ * - 特定の月だけを選択して書き込み可能
  * 
  * 予定の入力方法:
  * - 時間指定のある予定: 予定名<開始時刻-終了時刻> 例）会議<10:00-12:00>
@@ -28,6 +29,7 @@
  * - ver5.1 (2022/02/02): 全角ハイフン「−」対応
  * - ver6 (2025/03/22): カレンダー同期機能強化（既存予定の削除と再同期）
  * - ver7 (2025/03/25): 前期・後期分割書き込み機能追加
+ * - ver7.1 (2025/03/26): 月別書き込み機能追加
  * 
  * ライセンス:
  * MIT License
@@ -406,6 +408,192 @@ function writeScheduleToCalendar103() {
 }
 
 /**
+ * 特定の月の行事予定をGoogleカレンダーに書き込む関数
+ * ユーザーが選択した月の行事予定データをGoogleカレンダーに流し込み、
+ * 指定期間内の既存の予定をすべて削除してからスプレッドシートの内容で更新します。
+ */
+function writeScheduleToCalendarSpecificMonth() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var CALENDAR_ID = sheet.getRange(1,5).getValue(); //カレンダーIDの取得
+  
+  if (CALENDAR_ID == '') {
+    Browser.msgBox("カレンダーIDが指定されていません。\\n カレンダーIDを入力して再度[作成]を実行してください。\\n 操作を終了します");
+    return; // プログラムの終了
+  }
+  
+  // 月の選択肢
+  var months = [
+    {name: "4月", index: 0},
+    {name: "5月", index: 1},
+    {name: "6月", index: 2},
+    {name: "7月", index: 3},
+    {name: "8月", index: 4},
+    {name: "9月", index: 5},
+    {name: "10月", index: 6},
+    {name: "11月", index: 7},
+    {name: "12月", index: 8},
+    {name: "1月", index: 9},
+    {name: "2月", index: 10},
+    {name: "3月", index: 11}
+  ];
+  
+  // 月の選択ダイアログを表示
+  var ui = SpreadsheetApp.getUi();
+  var monthResponse = ui.prompt(
+    '月を選択',
+    'カレンダーに流し込む月を入力してください（例：4月、5月、...、3月）:',
+    ui.ButtonSet.OK_CANCEL
+  );
+  
+  // ダイアログの結果を取得
+  var monthButton = monthResponse.getSelectedButton();
+  var monthText = monthResponse.getResponseText().trim();
+  
+  // キャンセルボタンが押された場合は終了
+  if (monthButton === ui.Button.CANCEL) {
+    return;
+  }
+  
+  // 入力された月が有効かチェック
+  var selectedMonth = null;
+  for (var i = 0; i < months.length; i++) {
+    if (months[i].name === monthText) {
+      selectedMonth = months[i];
+      break;
+    }
+  }
+  
+  if (selectedMonth === null) {
+    Browser.msgBox("有効な月を入力してください（例：4月、5月、...、3月）。");
+    return;
+  }
+  
+  // 確認ダイアログを表示
+  var result = Browser.msgBox(
+    selectedMonth.name + "の行事予定をGoogleカレンダーに流し込んで良いですか？\\n " +
+    "【注意】 この操作は取り消せません！\\n " + 
+    "カレンダー内の既存の予定（" + selectedMonth.name + "）はすべて削除されます！",
+    Browser.Buttons.OK_CANCEL
+  );
+  
+  if (result != "ok") {
+    return; // キャンセルされた場合は終了
+  }
+  
+  var calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+  
+  try {
+    // 月のインデックスに基づいて列を計算
+    var monthColIndex = selectedMonth.index * 2; // 0, 2, 4, ..., 22
+    
+    // 全データを取得
+    var fullTable = sheet.getRange(3, 1, 31, 24).getValues();
+    var schedule_table = [];
+    
+    // 選択された月のデータのみを抽出
+    for (var i = 0; i < 31; i++) {
+      var row = [];
+      row.push(fullTable[i][monthColIndex]); // 日付列
+      row.push(fullTable[i][monthColIndex + 1]); // 予定列
+      schedule_table.push(row);
+    }
+    
+    // スプレッドシートの期間（最初と最後の日付）を特定
+    var startDate = null;
+    var endDate = null;
+    
+    // 最初と最後の日付を検索
+    for (var i = 0; i < 31; i++) {
+      var tmp_date = schedule_table[i][0];
+      // 日付オブジェクトかどうかを厳密にチェック
+      if (tmp_date !== '' && tmp_date instanceof Date && !isNaN(tmp_date.getTime())) {
+        if (startDate === null || tmp_date < startDate) {
+          startDate = new Date(tmp_date);
+        }
+        if (endDate === null || tmp_date > endDate) {
+          endDate = new Date(tmp_date);
+        }
+      }
+    }
+    
+    // 日付が見つからない場合は処理を中止
+    if (startDate === null || endDate === null) {
+      Browser.msgBox('スプレッドシートに有効な日付が見つかりません。処理を中止します。');
+      return;
+    }
+    
+    // 終了日の23:59:59に設定（その日の終わりまで）
+    endDate.setHours(23, 59, 59, 999);
+    
+    try {
+      // 指定期間内の既存の予定をすべて削除
+      var events = calendar.getEvents(startDate, endDate);
+      Logger.log('削除対象期間: ' + startDate + ' から ' + endDate);
+      Logger.log('削除対象イベント数: ' + events.length);
+      
+      for (var e = 0; e < events.length; e++) {
+        try {
+          events[e].deleteEvent();
+          Utilities.sleep(100); // APIレート制限を避けるための短い待機
+        } catch (deleteErr) {
+          Logger.log('イベント削除エラー: ' + deleteErr.message);
+        }
+      }
+      
+      // 削除完了のメッセージ
+      if (events.length > 0) {
+        Logger.log(events.length + '件の既存の予定を削除しました。');
+      }
+    } catch (eventsErr) {
+      Logger.log('イベント取得エラー: ' + eventsErr.message);
+      // エラーが発生しても処理を続行
+    }
+    
+    // スプレッドシートの予定を新たに書き込む
+    for (var i = 0; i < 31; i++) {
+      var tmp_date = schedule_table[i][0];
+      if (tmp_date !== '') {
+        var date = Utilities.formatDate(tmp_date, 'Asia/Tokyo', 'yyyy/MM/dd');
+        var schedule = schedule_table[i][1];
+        if (schedule) {
+          var scheduleAry = schedule.split(',');
+          var sn = scheduleAry.length;
+          for (var n = 0; n < sn; n++) {
+            if (scheduleAry[n] !== '') {
+              var str = zen_han(scheduleAry[n]);
+              var reg1 = /.*?(?=[<])/;
+              var str1 = str.match(reg1);
+              if (str1 === null) {
+                calendar
+                  .createAllDayEvent(
+                  str
+                  , new Date(date.toString()) 
+                )
+              } else {
+                var reg23= /(?<=[<]).*?(?=[>])/;
+                var seTime = zen_han(str.match(reg23));
+                var reg2 = /.*?(?=[-ー−])/;
+                var startTime = zen_han(seTime.match(reg2));
+                var reg3 = /(?<=[-ー−]).*/;
+                var endTime = zen_han(seTime.match(reg3));
+                var startDate = new Date(date.toString()+' '+ startTime.replace(/[：;；]/, ":"));
+                var endDate = new Date(date.toString()+' '+ endTime.replace(/[：;；]/, ":"));
+                calendar.createEvent(str1,startDate,endDate);
+              }
+              Utilities.sleep(200);
+            }
+          }
+        }
+      }
+    }
+    
+    Browser.msgBox(selectedMonth.name + 'の行事予定のカレンダーへの流し込みが終了しました。\nカレンダーの予定はスプレッドシートの内容で更新されました。');
+  } catch(e) {
+    Browser.msgBox('エラーが発生しました:' + e.message);
+  }
+}
+
+/**
  * スプレッドシートを開いたときに実行される関数
  * 年間行事予定メニューを作成します
  */
@@ -419,6 +607,7 @@ function onOpen() {
   menu.addItem('【全期間登録】全期間カレンダーへ書き込み実行', 'writeScheduleToCalendar');
   menu.addItem('【前期登録】前期（4-9月）書き込み実行', 'writeScheduleToCalendar49');
   menu.addItem('【後期登録】後期（10-3月）書き込み実行', 'writeScheduleToCalendar103');
+  menu.addItem('【月別登録】特定の月だけ書き込み実行', 'writeScheduleToCalendarSpecificMonth');
   menu.addToUi();
 }
 
