@@ -14,7 +14,7 @@
 
 ## 使用方法
 
-年間行事予定表2025v7(公開用):[https://docs.google.com/spreadsheets/d/14l7Q61EO28ke3TVYzDQIA33_wg7u-gMq8X6zfSSGMS8/copy](https://docs.google.com/spreadsheets/d/14l7Q61EO28ke3TVYzDQIA33_wg7u-gMq8X6zfSSGMS8/copy)
+年間行事予定表2025v7.1(公開用):[https://docs.google.com/spreadsheets/d/14l7Q61EO28ke3TVYzDQIA33_wg7u-gMq8X6zfSSGMS8/copy](https://docs.google.com/spreadsheets/d/14l7Q61EO28ke3TVYzDQIA33_wg7u-gMq8X6zfSSGMS8/copy)
 
 ### 初期設定
 
