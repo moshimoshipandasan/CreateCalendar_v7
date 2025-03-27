@@ -578,6 +578,20 @@ function writeScheduleToCalendarSpecificMonth() {
                 var endTime = zen_han(seTime.match(reg3));
                 var startDate = new Date(date.toString()+' '+ startTime.replace(/[：;；]/, ":"));
                 var endDate = new Date(date.toString()+' '+ endTime.replace(/[：;；]/, ":"));
+                
+                // 開始日時と終了日時を比較し、開始日時が終了日時より後の場合は調整
+                if (startDate > endDate) {
+                  // 1月など年をまたぐ月の場合、終了日時が翌日になる可能性がある
+                  // 終了日時を翌日に設定
+                  endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
+                  
+                  // それでも開始日時が終了日時より後の場合はエラーログを出力してスキップ
+                  if (startDate > endDate) {
+                    Logger.log('エラー: 予定「' + str1 + '」の開始日時が終了日時より後です。スキップします。');
+                    continue;
+                  }
+                }
+                
                 calendar.createEvent(str1,startDate,endDate);
               }
               Utilities.sleep(200);

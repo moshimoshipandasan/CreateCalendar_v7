@@ -2,6 +2,8 @@
 
 このツールは、スプレッドシートで管理している年間行事予定をGoogleカレンダーに自動的に書き込むためのGoogle Apps Scriptプロジェクトです。スプレッドシートを原本として、カレンダーを常に最新の状態に保ちます。
 
+GitHub: [https://github.com/moshimoshipandasan/CreateCalendar_v7](https://github.com/moshimoshipandasan/CreateCalendar_v7)
+
 ## 主な機能
 
 - スプレッドシートの年間行事予定をGoogleカレンダーに書き込み
