@@ -27,6 +27,8 @@ Thumbs.db
 
 # Google Apps Script / clasp local auth
 .clasprc.json
+.clasp.json
+AGENTS.md
 
 # Temporary files
 *.tmp
